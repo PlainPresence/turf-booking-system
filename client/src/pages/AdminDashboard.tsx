@@ -281,13 +281,16 @@ export default function AdminDashboard() {
                           <td className="px-6 py-4 text-sm font-medium text-green-600">₹{booking.amount}</td>
                           <td className="px-6 py-4">
                             <span className={`px-3 py-1 text-xs font-semibold rounded-full ${
+                              booking.status === 'cancelled'
+                              ? 'bg-gray-200 text-gray-700'
                               booking.paymentStatus === 'success' 
                                 ? 'bg-green-100 text-green-800'
                                 : booking.paymentStatus === 'pending'
                                   ? 'bg-amber-100 text-amber-800'
                                   : 'bg-red-100 text-red-800'
                             }`}>
-                              {booking.paymentStatus === 'success' ? 'Confirmed' : 
+                              {booking.status === 'cancelled' ? 'Cancelled'
+                                booking.paymentStatus === 'success' ? 'Confirmed' : 
                                booking.paymentStatus === 'pending' ? 'Pending' : 'Failed'}
                             </span>
                           </td>
