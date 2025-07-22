@@ -11,6 +11,8 @@ import { useAuthContext } from '@/context/AuthContext';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import BlockSlotModal from '@/components/BlockSlotModal';
 import BlockDateModal from '@/components/BlockDateModal';
+import EditBookingModal from '@/components/EditBookingModal';
+import CreateBookingModal from '@/components/CreateBookingModal';
 
 export default function AdminDashboard() {
   const [, setLocation] = useLocation();
@@ -21,61 +23,90 @@ export default function AdminDashboard() {
   const [searchFilter, setSearchFilter] = useState('');
   const [showBlockSlotModal, setShowBlockSlotModal] = useState(false);
   const [showBlockDateModal, setShowBlockDateModal] = useState(false);
-  
+
+  // new states for modals
+  const [editBooking, setEditBooking] = useState<any>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+
   const { bookings, loading: bookingsLoading, refetch } = useBookings({
     dateFilter,
     searchFilter,
   });
 
   useEffect(() => {
-    if (!user) {
-      setLocation('/admin-access-sptp2024');
-    }
+    if (!user) setLocation('/admin-access-sptp2024');
   }, [user, setLocation]);
 
   const handleLogout = async () => {
     try {
       await logout();
-      toast({
-        title: 'Logged Out',
-        description: 'You have been successfully logged out.',
-      });
+      toast({ title: 'Logged Out', description: 'You have been successfully logged out.' });
       setLocation('/admin-login');
     } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to logout. Please try again.',
-        variant: 'destructive',
-      });
+      toast({ title: 'Error', description: 'Failed to logout. Please try again.', variant: 'destructive' });
     }
   };
 
-  const handleDateFilter = (date: string) => {
-    setDateFilter(date);
-  };
-
-  const handleSearch = (query: string) => {
-    setSearchFilter(query);
-  };
-
-  const handleBlockSlot = () => {
-    setShowBlockSlotModal(true);
-  };
-
-  const handleBlockDate = () => {
-    setShowBlockDateModal(true);
-  };
-
-  const handleModalSuccess = () => {
-    refetch();
-  };
+  const handleDateFilter = (date: string) => setDateFilter(date);
+  const handleSearch = (query: string) => setSearchFilter(query);
+  const handleBlockSlot = () => setShowBlockSlotModal(true);
+  const handleBlockDate = () => setShowBlockDateModal(true);
+  const handleModalSuccess = () => refetch();
 
   const handleExportData = () => {
-    // TODO: Implement data export
-    toast({
-      title: 'Export Started',
-      description: 'Your data export will begin shortly.',
-    });
+    toast({ title: 'Export Started', description: 'Your data export will begin shortly.' });
+    // Implement data export logic here as needed
+  };
+
+  // --- NEW: Booking CRUD handlers using APIs ---
+
+  const handleEditBooking = (booking: any) => {
+    setEditBooking(booking);
+    setShowEditModal(true);
+  };
+
+  const handleEditBookingApi = async (data: any) => {
+    try {
+      await fetch(`/api/bookings/${data.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      toast({ title: 'Booking Updated', description: `Booking ${data.bookingId} updated.` });
+      setShowEditModal(false);
+      refetch();
+    } catch {
+      toast({ title: 'Error', description: 'Failed to update booking.', variant: 'destructive' });
+    }
+  };
+
+  const handleCancelBooking = async (booking: any) => {
+    if (!window.confirm(`Cancel booking ${booking.bookingId}?`)) return;
+    try {
+      await fetch(`/api/bookings/${booking.id}`, { method: 'DELETE' });
+      toast({ title: 'Cancelled', description: `Booking ${booking.bookingId} cancelled.` });
+      refetch();
+    } catch {
+      toast({ title: 'Error', description: 'Failed to cancel booking.', variant: 'destructive' });
+    }
+  };
+
+  const handleCreateBooking = () => setShowCreateModal(true);
+
+  const handleCreateBookingApi = async (data: any) => {
+    try {
+      await fetch(`/api/bookings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      toast({ title: 'Booking Created', description: 'Manual booking created successfully.' });
+      setShowCreateModal(false);
+      refetch();
+    } catch {
+      toast({ title: 'Error', description: 'Failed to create booking.', variant: 'destructive' });
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -93,9 +124,7 @@ export default function AdminDashboard() {
     });
   };
 
-  if (!user) {
-    return <LoadingSpinner />;
-  }
+  if (!user) return <LoadingSpinner />;
 
   // Calculate stats
   const today = new Date().toISOString().split('T')[0];
@@ -107,11 +136,7 @@ export default function AdminDashboard() {
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Admin Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-        >
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
           <Card className="shadow-lg mb-8">
             <CardContent className="p-6">
               <div className="flex flex-col md:flex-row md:items-center md:justify-between">
@@ -124,11 +149,7 @@ export default function AdminDashboard() {
                     <div className="text-sm text-gray-500">Logged in as</div>
                     <div className="font-semibold">{user.email}</div>
                   </div>
-                  <Button 
-                    onClick={handleLogout}
-                    variant="destructive"
-                    className="px-4 py-2"
-                  >
+                  <Button onClick={handleLogout} variant="destructive" className="px-4 py-2">
                     <i className="fas fa-sign-out-alt mr-2"></i>
                     Logout
                   </Button>
@@ -139,12 +160,8 @@ export default function AdminDashboard() {
         </motion.div>
 
         {/* Stats Overview */}
-        <motion.div
-          className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.2 }}
-        >
+        <motion.div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8"
+          initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.2 }}>
           <Card className="shadow-lg">
             <CardContent className="p-6">
               <div className="flex items-center">
@@ -158,7 +175,6 @@ export default function AdminDashboard() {
               </div>
             </CardContent>
           </Card>
-
           <Card className="shadow-lg">
             <CardContent className="p-6">
               <div className="flex items-center">
@@ -172,7 +188,6 @@ export default function AdminDashboard() {
               </div>
             </CardContent>
           </Card>
-
           <Card className="shadow-lg">
             <CardContent className="p-6">
               <div className="flex items-center">
@@ -186,7 +201,6 @@ export default function AdminDashboard() {
               </div>
             </CardContent>
           </Card>
-
           <Card className="shadow-lg">
             <CardContent className="p-6">
               <div className="flex items-center">
@@ -203,38 +217,22 @@ export default function AdminDashboard() {
         </motion.div>
 
         {/* Quick Actions */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.4 }}
-        >
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.4 }}>
           <Card className="shadow-lg mb-8">
             <CardContent className="p-6">
               <h2 className="text-xl font-bold text-gray-900 mb-4">Quick Actions</h2>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Button 
-                  onClick={handleBlockSlot}
-                  className="bg-primary hover:bg-primary/90 text-white px-6 py-3 h-auto font-semibold transition-colors flex items-center justify-center"
-                >
-                  <i className="fas fa-ban mr-2"></i>
-                  Block Time Slot
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <Button onClick={handleBlockSlot} className="bg-primary hover:bg-primary/90 text-white px-6 py-3 h-auto font-semibold">
+                  <i className="fas fa-ban mr-2"></i>Block Time Slot
                 </Button>
-                
-                <Button 
-                  onClick={handleBlockDate}
-                  variant="destructive"
-                  className="px-6 py-3 h-auto font-semibold transition-colors flex items-center justify-center"
-                >
-                  <i className="fas fa-calendar-times mr-2"></i>
-                  Block Full Date
+                <Button onClick={handleBlockDate} variant="destructive" className="px-6 py-3 h-auto font-semibold">
+                  <i className="fas fa-calendar-times mr-2"></i>Block Full Date
                 </Button>
-                
-                <Button 
-                  onClick={handleExportData}
-                  className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 h-auto font-semibold transition-colors flex items-center justify-center"
-                >
-                  <i className="fas fa-download mr-2"></i>
-                  Export Data
+                <Button onClick={handleExportData} className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 h-auto font-semibold">
+                  <i className="fas fa-download mr-2"></i>Export Data
+                </Button>
+                <Button onClick={handleCreateBooking} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 h-auto font-semibold">
+                  <i className="fas fa-plus mr-2"></i>Create Booking
                 </Button>
               </div>
             </CardContent>
@@ -242,37 +240,18 @@ export default function AdminDashboard() {
         </motion.div>
 
         {/* Bookings Management */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.6 }}
-        >
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.6 }}>
           <Card className="shadow-lg">
             <CardContent className="p-6">
               <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
                 <h2 className="text-xl font-bold text-gray-900">All Bookings</h2>
                 <div className="mt-4 md:mt-0 flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-4">
-                  <Input 
-                    type="date"
-                    value={dateFilter}
-                    onChange={(e) => handleDateFilter(e.target.value)}
-                    className="h-10"
-                    placeholder="Filter by date"
-                  />
-                  <Input 
-                    type="text"
-                    value={searchFilter}
-                    onChange={(e) => handleSearch(e.target.value)}
-                    placeholder="Search by phone or booking ID"
-                    className="h-10 md:w-64"
-                  />
+                  <Input type="date" value={dateFilter} onChange={(e) => handleDateFilter(e.target.value)} className="h-10" placeholder="Filter by date" />
+                  <Input type="text" value={searchFilter} onChange={(e) => handleSearch(e.target.value)} placeholder="Search by phone or booking ID" className="h-10 md:w-64" />
                 </div>
               </div>
-
               {bookingsLoading ? (
-                <div className="flex justify-center py-8">
-                  <LoadingSpinner size="lg" />
-                </div>
+                <div className="flex justify-center py-8"><LoadingSpinner size="lg" /></div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full">
@@ -286,6 +265,8 @@ export default function AdminDashboard() {
                         <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Time</th>
                         <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Amount</th>
                         <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Status</th>
+                        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Contact</th>
+                        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200">
@@ -310,11 +291,21 @@ export default function AdminDashboard() {
                                booking.paymentStatus === 'pending' ? 'Pending' : 'Failed'}
                             </span>
                           </td>
+                          {/* WhatsApp Quick Contact */}
+                          <td className="px-6 py-4">
+                            <a href={`https://wa.me/91${booking.mobile}`} target="_blank" rel="noopener noreferrer" title="WhatsApp">
+                              <Button size="icon" variant="outline"><i className="fab fa-whatsapp text-green-600"></i></Button>
+                            </a>
+                          </td>
+                          {/* Edit/Cancel Actions */}
+                          <td className="px-6 py-4 flex gap-2">
+                            <Button size="sm" onClick={() => handleEditBooking(booking)}>Edit</Button>
+                            <Button size="sm" variant="destructive" onClick={() => handleCancelBooking(booking)}>Cancel</Button>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
-
                   {bookings.length === 0 && (
                     <div className="text-center py-8 text-gray-500">
                       No bookings found matching your criteria.
@@ -327,17 +318,10 @@ export default function AdminDashboard() {
         </motion.div>
 
         {/* Modals */}
-        <BlockSlotModal
-          isOpen={showBlockSlotModal}
-          onClose={() => setShowBlockSlotModal(false)}
-          onSuccess={handleModalSuccess}
-        />
-        
-        <BlockDateModal
-          isOpen={showBlockDateModal}
-          onClose={() => setShowBlockDateModal(false)}
-          onSuccess={handleModalSuccess}
-        />
+        <BlockSlotModal isOpen={showBlockSlotModal} onClose={() => setShowBlockSlotModal(false)} onSuccess={handleModalSuccess} />
+        <BlockDateModal isOpen={showBlockDateModal} onClose={() => setShowBlockDateModal(false)} onSuccess={handleModalSuccess} />
+        <EditBookingModal booking={editBooking} isOpen={showEditModal} onClose={() => setShowEditModal(false)} onSave={handleEditBookingApi} />
+        <CreateBookingModal isOpen={showCreateModal} onClose={() => setShowCreateModal(false)} onCreate={handleCreateBookingApi} />
       </div>
     </div>
   );
