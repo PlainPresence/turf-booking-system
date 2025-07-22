@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Modal } from '@/components/ui/modal'
 
 export default function EditBookingModal({ booking, isOpen, onClose, onSave }) {
   const [form, setForm] = useState(booking || {});
