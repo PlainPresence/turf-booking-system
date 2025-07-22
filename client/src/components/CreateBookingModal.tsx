@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Modal, Button, Input } from '@/components/ui';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 export default function CreateBookingModal({ isOpen, onClose, onCreate }) {
   const [form, setForm] = useState({ fullName: '', mobile: '', /* Add more fields as needed */ });
